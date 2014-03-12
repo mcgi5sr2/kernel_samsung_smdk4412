@@ -941,7 +941,7 @@ static int cpufreq_add_dev(struct sys_device *sys_dev)
 		pr_debug("initialization failed\n");
 		goto err_unlock_policy;
 	}
-	
+
 	/*
 	* affected cpus must always be the one, which are online. We aren't
 	* managing offline cpus here.
