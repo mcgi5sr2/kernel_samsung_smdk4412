@@ -85,7 +85,7 @@ static int touchkey_keycode[] = { 0,
 #endif
 };
 static const int touchkey_count = sizeof(touchkey_keycode) / sizeof(int);
-int touch_led_on_screen_touch  = TOUCHKEY_LED_DISABLED;
+int led_on_screen_touch  = TOUCHKEY_LED_DISABLED;
 int touchkey_pressed = 0;
 int handle_led = 0;
 
@@ -717,7 +717,11 @@ static int touchkey_firmware_update(struct touchkey_i2c *tkey_i2c)
 static irqreturn_t touchkey_interrupt(int irq, void *dev_id)
 {
 	struct touchkey_i2c *tkey_i2c = dev_id;
+<<<<<<< HEAD
     static const int ledCmd[] = {TK_CMD_LED_ON, TK_CMD_LED_OFF};
+=======
+	static const int ledCmd[] = {TK_CMD_LED_OFF, TK_CMD_LED_ON};
+>>>>>>> bea2e9963b2c15795433a9041be970aeca7459c9
 #if defined(READ_MEM_SENSITIVITY)
 	u8 data[14];
 #else
@@ -729,6 +733,10 @@ static irqreturn_t touchkey_interrupt(int irq, void *dev_id)
 	int pressed;
 
 	set_touchkey_debug('a');
+
+	if (!atomic_read(&tkey_i2c->keypad_enable)) {
+		return;
+	}
 
 	retry = 3;
 	while (retry--) {
@@ -783,12 +791,23 @@ static irqreturn_t touchkey_interrupt(int irq, void *dev_id)
 
 	if (pressed) {
 		set_touchkey_debug('P');
+<<<<<<< HEAD
 		if (touch_led_on_screen_touch == TOUCHKEY_LED_DISABLED && handle_led == 0 && touchkey_led_status == TK_CMD_LED_OFF) {
 			touchkey_pressed = 1;			
 		} else if (touch_led_on_screen_touch == TOUCHKEY_LED_DISABLED && handle_led == 1 && touchkey_led_status == TK_CMD_LED_OFF) { 
 			pr_debug("[Touchkey] %s: enabling touchled\n", __func__);
 			i2c_touchkey_write(tkey_i2c->client, (u8 *) &ledCmd[0], 1);
 			touchkey_led_status = TK_CMD_LED_ON;
+=======
+		if (led_on_screen_touch == TOUCHKEY_LED_DISABLED && touchkey_led_status == TK_CMD_LED_OFF) {
+			if (handle_led == 0) {
+				touchkey_pressed = 1;
+			} else if (handle_led == 1) {
+				pr_debug("[Touchkey] %s: enabling touch led\n", __func__);
+				i2c_touchkey_write(tkey_i2c->client, (u8 *) &ledCmd[1], 1);
+				touchkey_led_status = TK_CMD_LED_ON;
+			}
+>>>>>>> bea2e9963b2c15795433a9041be970aeca7459c9
 		}
 	}
 
@@ -1022,12 +1041,20 @@ static int sec_touchkey_late_resume(struct early_suspend *h)
 
 	if (touchled_cmd_reversed) {
 		touchled_cmd_reversed = 0;
+<<<<<<< HEAD
 		if (touch_led_on_screen_touch == TOUCHKEY_LED_DISABLED) {
 			touchkey_led_status = TK_CMD_LED_OFF;
 		}
 		i2c_touchkey_write(tkey_i2c->client,
 			(u8 *) &touchkey_led_status, 1);
 		printk(KERN_DEBUG "[Touchkey] LED returned to desired state\n");
+=======
+		if (led_on_screen_touch == TOUCHKEY_LED_DISABLED && touchkey_pressed == 0)
+			touchkey_led_status = TK_CMD_LED_OFF;
+		i2c_touchkey_write(tkey_i2c->client,
+			(u8 *) &touchkey_led_status, 1);
+		printk(KERN_DEBUG "[Touchkey] LED returned to the desired state\n");
+>>>>>>> bea2e9963b2c15795433a9041be970aeca7459c9
 	}
 #ifdef TEST_JIG_MODE
 	i2c_touchkey_write(tkey_i2c->client, &get_touch, 1);
@@ -1181,7 +1208,7 @@ static ssize_t touchkey_led_control(struct device *dev,
 	struct touchkey_i2c *tkey_i2c = dev_get_drvdata(dev);
 	int data;
 	int ret;
-	static const int ledCmd[] = {TK_CMD_LED_ON, TK_CMD_LED_OFF};
+	static const int ledCmd[] = {TK_CMD_LED_OFF, TK_CMD_LED_ON};
 
 #if defined(CONFIG_TARGET_LOCALE_KOR)
 	if (touchkey_probe == false)
@@ -1194,7 +1221,7 @@ static ssize_t touchkey_led_control(struct device *dev,
 		return size;
 	}
 
-	if (data != 1 && data != 2) {
+	if (data != 0 && data != 1) {
 		printk(KERN_DEBUG "[TouchKey] %s wrong cmd %x\n",
 			__func__, data);
 		return size;
@@ -1212,6 +1239,7 @@ static ssize_t touchkey_led_control(struct device *dev,
 		handle_led = 0;
 	}
 
+<<<<<<< HEAD
 	if (touch_led_on_screen_touch == TOUCHKEY_LED_DISABLED && touchkey_pressed == 0) {
 		data = TK_CMD_LED_OFF;
 	} else {
@@ -1220,6 +1248,31 @@ static ssize_t touchkey_led_control(struct device *dev,
 		data = ledCmd[data-1];
 #else
 		data = ledCmd[data-1];
+=======
+	if (data == 0) {
+		touchkey_pressed = 0;
+		handle_led = 0;
+	}
+
+	if (data == 1) {
+		handle_led = 1;
+
+		if (touchkey_pressed == 1 && touchkey_led_status == TK_CMD_LED_OFF) {
+			pr_debug("[Touchkey] %s: enabling touch led\n", __func__);
+			i2c_touchkey_write(tkey_i2c->client, (u8 *) &ledCmd[1], 1);
+			touchkey_led_status = TK_CMD_LED_ON;
+		}
+	}
+
+	if (led_on_screen_touch == TOUCHKEY_LED_DISABLED && touchkey_pressed == 0) {
+		data = TK_CMD_LED_OFF;
+	} else {
+#if defined(CONFIG_TARGET_LOCALE_NA)
+		if (tkey_i2c->module_ver >= 8)
+			data = ledCmd[data];
+#else
+		data = ledCmd[data];
+>>>>>>> bea2e9963b2c15795433a9041be970aeca7459c9
 #endif
 	}
 	ret = i2c_touchkey_write(tkey_i2c->client, (u8 *) &data, 1);
@@ -1437,6 +1490,7 @@ static ssize_t touchkey_back_show(struct device *dev,
 }
 #endif
 
+<<<<<<< HEAD
 static ssize_t touch_led_on_screen_touch_show(struct device *dev,
 					      struct device_attribute *attr, char *buf)
 {
@@ -1462,6 +1516,36 @@ static ssize_t touch_led_on_screen_touch_store(struct device *dev,
 	  default:			return -EINVAL;
 	}
 
+=======
+static ssize_t led_on_screen_touch_show(struct device *dev,
+								struct device_attribute *attr, char *buf)
+{
+	switch (led_on_screen_touch) {
+		case TOUCHKEY_LED_DISABLED:
+			return sprintf(buf, "%d : H/W key won't light up on touchscreen touch\n", led_on_screen_touch);
+		case TOUCHKEY_LED_ENABLED:
+			return sprintf(buf, "%d : H/W key will light up on touchscreen touch\n", led_on_screen_touch);
+		default:
+			return sprintf(buf, "%d : value out of range\n", led_on_screen_touch);
+	}
+}
+
+static ssize_t led_on_screen_touch_store(struct device *dev,
+								struct device_attribute *attr, const char *buf, size_t count)
+{
+	int new_led_on_screen_touch;
+
+	sscanf(buf, "%du", &new_led_on_screen_touch);
+
+	switch (new_led_on_screen_touch) {
+		case TOUCHKEY_LED_DISABLED:
+		case TOUCHKEY_LED_ENABLED:
+			led_on_screen_touch = new_led_on_screen_touch;
+			return count;
+		default:
+			return -EINVAL;
+	}
+>>>>>>> bea2e9963b2c15795433a9041be970aeca7459c9
 }
 
 #if defined(TK_HAS_AUTOCAL)
@@ -1611,6 +1695,40 @@ static ssize_t set_touchkey_firm_status_show(struct device *dev,
 	return count;
 }
 
+static ssize_t sec_keypad_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct touchkey_i2c *tkey_i2c = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", atomic_read(&tkey_i2c->keypad_enable));
+}
+
+static ssize_t sec_keypad_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct touchkey_i2c *tkey_i2c = dev_get_drvdata(dev);
+
+	unsigned int val = 0;
+	sscanf(buf, "%d", &val);
+	val = (val == 0 ? 0 : 1);
+	atomic_set(&tkey_i2c->keypad_enable, val);
+	if (val) {
+		set_bit(KEY_BACK, tkey_i2c->input_dev->keybit);
+		set_bit(KEY_MENU, tkey_i2c->input_dev->keybit);
+		set_bit(KEY_HOME, tkey_i2c->input_dev->keybit);
+	} else {
+		clear_bit(KEY_BACK, tkey_i2c->input_dev->keybit);
+		clear_bit(KEY_MENU, tkey_i2c->input_dev->keybit);
+		clear_bit(KEY_HOME, tkey_i2c->input_dev->keybit);
+	}
+	input_sync(tkey_i2c->input_dev);
+
+	return count;
+}
+
+static DEVICE_ATTR(keypad_enable, S_IRUGO|S_IWUSR, sec_keypad_enable_show,
+		   sec_keypad_enable_store);
+
 static DEVICE_ATTR(recommended_version, S_IRUGO | S_IWUSR | S_IWGRP,
 		   touch_version_read, touch_version_write);
 static DEVICE_ATTR(updated_version, S_IRUGO | S_IWUSR | S_IWGRP,
@@ -1621,8 +1739,13 @@ static DEVICE_ATTR(touchkey_menu, S_IRUGO | S_IWUSR | S_IWGRP,
 		   touchkey_menu_show, NULL);
 static DEVICE_ATTR(touchkey_back, S_IRUGO | S_IWUSR | S_IWGRP,
 		   touchkey_back_show, NULL);
+<<<<<<< HEAD
 static DEVICE_ATTR(touch_led_on_screen_touch, S_IRUGO | S_IWUSR | S_IWGRP,
 		   touch_led_on_screen_touch_show, touch_led_on_screen_touch_store);
+=======
+static DEVICE_ATTR(led_on_screen_touch, S_IRUGO | S_IWUSR | S_IWGRP,
+		   led_on_screen_touch_show, led_on_screen_touch_store);
+>>>>>>> bea2e9963b2c15795433a9041be970aeca7459c9
 
 #if defined(TK_USE_4KEY)
 static DEVICE_ATTR(touchkey_home, S_IRUGO, touchkey_home_show, NULL);
@@ -1671,7 +1794,11 @@ static struct attribute *touchkey_attributes[] = {
 	&dev_attr_brightness.attr,
 	&dev_attr_touchkey_menu.attr,
 	&dev_attr_touchkey_back.attr,
+<<<<<<< HEAD
 	&dev_attr_touch_led_on_screen_touch.attr,
+=======
+	&dev_attr_led_on_screen_touch.attr,
+>>>>>>> bea2e9963b2c15795433a9041be970aeca7459c9
 #if defined(TK_USE_4KEY)
 	&dev_attr_touchkey_home.attr,
 	&dev_attr_touchkey_search.attr,
@@ -1699,6 +1826,7 @@ static struct attribute *touchkey_attributes[] = {
 	&dev_attr_touchkey_threshold.attr,
 	&dev_attr_autocal_enable.attr,
 	&dev_attr_autocal_stat.attr,
+	&dev_attr_keypad_enable.attr,
 #endif
 	NULL,
 };
@@ -1765,6 +1893,8 @@ static int i2c_touchkey_probe(struct i2c_client *client,
 	set_bit(EV_LED, input_dev->evbit);
 	set_bit(LED_MISC, input_dev->ledbit);
 	set_bit(EV_KEY, input_dev->evbit);
+
+	atomic_set(&tkey_i2c->keypad_enable, 1);
 
 	for (i = 1; i < touchkey_count; i++)
 		set_bit(touchkey_keycode[i], input_dev->keybit);
